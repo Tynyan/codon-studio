@@ -93,7 +93,7 @@ export function ImportDialog({
 
           <label className="field">
             <span className="field-label">
-              DNA sequence <em>FASTA header is optional</em>
+              Coding DNA sequence <em>from ATG · FASTA header optional</em>
             </span>
             <textarea
               className="sequence-input"
@@ -111,7 +111,7 @@ export function ImportDialog({
 
           <div className="import-hint">
             <LockKeyhole size={14} />
-            <span>序列只在当前浏览器中解析和保存，不会上传到服务器。</span>
+            <span>序列只在当前浏览器中解析和保存，不会上传到服务器。<br />建议从起始密码子 ATG 开始粘贴 CDS；若包含 UTR，翻译会从第一个碱基按 +1 框读取。</span>
           </div>
         </div>
 
