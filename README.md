@@ -47,7 +47,7 @@
 | 蛋白质性质 | 分子量、理论 pI、GRAVY、净电荷、氨基酸组成 |
 | 密码子偏好 | 人类参考密码子频率、CAI、稀有密码子 |
 | 变异注释 | 同义 / 错义 / 无义 / 终止丢失、性质变化 |
-| 软件工程 | TypeScript strict、纯函数算法层、16 个单元测试、零 lint warning、响应式与可访问性 |
+| 软件工程 | TypeScript strict、纯函数算法层、17 个单元测试、零 lint warning、响应式与可访问性 |
 
 预置的真实变异包括：
 
@@ -101,12 +101,12 @@ npm run build
 npm run preview
 ```
 
-要求：**Node.js ≥ 20**（开发时使用 Node 24）。
+要求：**Node.js ≥ 22**（开发时使用 Node 24）。
 
 ### 测试与质量检查
 
 ```bash
-npm test        # 16 个算法单元测试
+npm test        # 17 个算法单元测试
 npm run lint    # Oxlint，0 warning
 npm run build   # TypeScript strict + Vite production build
 ```

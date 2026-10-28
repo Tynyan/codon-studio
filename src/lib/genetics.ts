@@ -498,6 +498,7 @@ export type MutationKind = "synonymous" | "missense" | "nonsense" | "stop-loss" 
 
 export interface MutationAnalysis {
   position: number;
+  frame: number;
   ref: string;
   alt: string;
   codonIndex: number;
@@ -515,17 +516,25 @@ export interface MutationAnalysis {
   pIDelta: number;
 }
 
-export function analyzeMutation(sequence: string, position: number, alt: string): MutationAnalysis {
+export function analyzeMutation(
+  sequence: string,
+  position: number,
+  alt: string,
+  frame = 0,
+): MutationAnalysis {
   const ref = sequence[position - 1] ?? "";
-  const codonIndex = Math.floor((position - 1) / 3);
-  const codonStart = codonIndex * 3;
+  const relative = position - 1 - frame;
+  const codonIndex = Math.max(0, Math.floor(relative / 3));
+  const codonStart = frame + codonIndex * 3;
   const refCodon = sequence.slice(codonStart, codonStart + 3);
-  const altCodon = `${refCodon.slice(0, (position - 1) % 3)}${alt}${refCodon.slice(((position - 1) % 3) + 1)}`;
+  const offsetInCodon = position - 1 - codonStart;
+  const altCodon = `${refCodon.slice(0, offsetInCodon)}${alt}${refCodon.slice(offsetInCodon + 1)}`;
   const refAa = translateCodon(refCodon);
   const altAa = translateCodon(altCodon);
-  const refProtein = proteinFromCds(sequence);
+  const frameSequence = sequence.slice(frame);
+  const refProtein = proteinFromCds(frameSequence);
   const mutated = mutateSequence(sequence, position, alt);
-  const altProtein = proteinFromCds(mutated);
+  const altProtein = proteinFromCds(mutated.slice(frame));
 
   let kind: MutationKind = "missense";
   if (refCodon.length < 3) kind = "untranslated";
@@ -538,6 +547,7 @@ export function analyzeMutation(sequence: string, position: number, alt: string)
 
   return {
     position,
+    frame,
     ref,
     alt,
     codonIndex,

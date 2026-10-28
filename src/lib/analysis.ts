@@ -69,8 +69,9 @@ export function buildVariantResult(
   position: number,
   alt: string,
   variant: GeneVariant | null = null,
+  frame = 0,
 ): VariantResult {
-  const analysis = analyzeMutation(gene.sequence, position, alt);
+  const analysis = analyzeMutation(gene.sequence, position, alt, frame);
   const radical =
     Math.abs(analysis.hydropathyDelta) >= 1.5 ||
     Math.abs(analysis.chargeDelta) >= 0.8 ||

@@ -43,13 +43,13 @@ export function VariantsView({
   draft: DraftMutation | null;
   onSelectVariant: (id: string | null) => void;
   onDraftChange: (draft: DraftMutation | null) => void;
-  onOpenCodon: (codonIndex: number) => void;
+  onOpenCodon: (codonIndex: number, frame?: number) => void;
 }) {
   const selectedVariant = gene.variants.find((variant) => variant.id === selectedVariantId) ?? null;
   const [customPosition, setCustomPosition] = useState(draft?.position ?? selectedVariant?.position ?? 1);
 
   const activeResult: VariantResult | null = draft
-    ? buildVariantResult(gene, draft.position, draft.alt)
+    ? buildVariantResult(gene, draft.position, draft.alt, null, draft.frame ?? 0)
     : selectedVariant
       ? analyzeVariant(gene, selectedVariant)
       : null;
@@ -71,7 +71,7 @@ export function VariantsView({
 
   const chooseCustom = (position: number, alt: string) => {
     onSelectVariant(null);
-    onDraftChange({ position, alt });
+    onDraftChange({ position, alt, frame: draft?.frame ?? 0 });
     setCustomPosition(position);
   };
 
@@ -189,7 +189,7 @@ export function VariantsView({
                           draft.alt !== nextRef
                             ? draft.alt
                             : (["A", "T", "G", "C"] as const).find((base) => base !== nextRef)!;
-                        onDraftChange({ position: next, alt: nextAlt });
+                        onDraftChange({ position: next, alt: nextAlt, frame: draft.frame });
                       }
                     }}
                   />
@@ -214,7 +214,7 @@ export function VariantsView({
                       draft.alt !== nextRef
                         ? draft.alt
                         : (["A", "T", "G", "C"] as const).find((base) => base !== nextRef)!;
-                    onDraftChange({ position: next, alt: nextAlt });
+                    onDraftChange({ position: next, alt: nextAlt, frame: draft.frame });
                   }
                 }}
                 aria-label="Mutation position"
@@ -254,7 +254,10 @@ export function VariantsView({
                   <h2>{selectedVariant?.name ?? changeLabel}</h2>
                   <p>{selectedVariant?.phenotype ?? "用户自定义点突变"}</p>
                 </div>
-                <Badge tone={badgeTone(result.tone)}>{result.label}</Badge>
+                <div className="variant-detail-badges">
+                  {analysisResult.frame !== 0 && <Badge tone="violet">frame +{analysisResult.frame + 1}</Badge>}
+                  <Badge tone={badgeTone(result.tone)}>{result.label}</Badge>
+                </div>
               </div>
 
               <div className="allele-stage">
@@ -314,7 +317,7 @@ export function VariantsView({
               </div>
 
               <div className="variant-actions">
-                <button type="button" className="text-button" onClick={() => onOpenCodon(analysisResult.codonIndex)}>
+                <button type="button" className="text-button" onClick={() => onOpenCodon(analysisResult.codonIndex, analysisResult.frame)}>
                   在工作台中查看这个密码子 <ArrowUpRight size={14} />
                 </button>
                 <button type="button" className="ghost-button" onClick={() => onDraftChange(null)}>
@@ -357,9 +360,12 @@ function VariantMap({
   selectedVariant: GeneVariant | null;
   draft: DraftMutation | null;
   onSelectVariant: (variant: GeneVariant) => void;
-  onOpenCodon: (codonIndex: number) => void;
+  onOpenCodon: (codonIndex: number, frame?: number) => void;
 }) {
-  const customCodon = draft ? Math.floor((draft.position - 1) / 3) : null;
+  const customFrame = draft?.frame ?? 0;
+  const customCodon = draft
+    ? Math.max(0, Math.floor((draft.position - 1 - customFrame) / 3))
+    : null;
   return (
     <div className="variant-map">
       <div className="variant-map-track">
@@ -397,7 +403,7 @@ function VariantMap({
             type="button"
             className="variant-marker variant-marker--custom is-active"
             style={{ left: `${(customCodon / gene.protein.length) * 100}%` }}
-            onClick={() => onOpenCodon(customCodon)}
+            onClick={() => onOpenCodon(customCodon, customFrame)}
             title="自定义突变"
           >
             <span />

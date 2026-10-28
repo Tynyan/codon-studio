@@ -3687,6 +3687,14 @@ kbd {
   font-size: 10px;
 }
 
+.variant-detail-badges {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  gap: 4px;
+  justify-content: flex-end;
+}
+
 .allele-stage {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 34px minmax(0, 1fr);

@@ -87,8 +87,9 @@ function App() {
 
   const goToView = (nextView: ViewId) => {
     setView(nextView);
-    if (nextView === "variants" && !draft && !selectedVariantId) {
-      setSelectedVariantId(gene.variants[0]?.id ?? null);
+    if (nextView === "variants") {
+      if (draft) setSelectedVariantId(null);
+      else if (!selectedVariantId) setSelectedVariantId(gene.variants[0]?.id ?? null);
     }
   };
 
@@ -120,7 +121,18 @@ function App() {
 
   const openVariantLab = () => {
     setView("variants");
-    if (!draft) {
+    if (draft) {
+      const known =
+        (draft.frame ?? 0) === 0
+          ? gene.variants.find((variant) => variant.position === draft.position && variant.alt === draft.alt)
+          : undefined;
+      if (known) {
+        setSelectedVariantId(known.id);
+        setDraft(null);
+      } else {
+        setSelectedVariantId(null);
+      }
+    } else {
       setSelectedVariantId(gene.variants[0]?.id ?? null);
     }
   };
@@ -131,11 +143,11 @@ function App() {
     setView("variants");
   };
 
-  const openCodon = (codonIndex: number) => {
+  const openCodon = (codonIndex: number, targetFrame = 0) => {
     setView("workbench");
-    setFrame(0);
+    setFrame(targetFrame);
     setSelectedCodon(codonIndex);
-    setSelectedBase(codonIndex * 3 + 1);
+    setSelectedBase(targetFrame + codonIndex * 3 + 1);
   };
 
   const copySequence = async () => {

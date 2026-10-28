@@ -59,6 +59,16 @@ describe("real gene catalog", () => {
     const reverse = orfs.find((orf) => orf.frame === 4);
     expect(reverse).toMatchObject({ start: 0, end: 9, strand: "-", lengthAa: 2 });
   });
+
+  it("analyzes a mutation in an alternate reading frame", () => {
+    const result = analyzeMutation("CATGAAATAG", 4, "C", 1);
+    expect(result.frame).toBe(1);
+    expect(result.codonStart).toBe(1);
+    expect(result.refCodon).toBe("ATG");
+    expect(result.altCodon).toBe("ATC");
+    expect([result.refAa, result.altAa]).toEqual(["M", "I"]);
+    expect(result.kind).toBe("missense");
+  });
 });
 
 describe("curated variant positions", () => {

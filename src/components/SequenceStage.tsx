@@ -31,6 +31,7 @@ import { cx } from "../lib/cx";
 export interface DraftMutation {
   position: number;
   alt: string;
+  frame?: number;
 }
 
 type BadgeTone = "lime" | "muted" | "coral" | "violet" | "cyan" | "amber";
@@ -100,7 +101,7 @@ export function SequenceStage({
     const choices = (["A", "T", "G", "C"] as const).filter((base) => base !== ref);
     const alt = choices[Math.floor(Math.random() * choices.length)];
     onSelectBase(position);
-    onDraftChange({ position, alt });
+    onDraftChange({ position, alt, frame });
   };
 
   return (
@@ -299,7 +300,7 @@ function CodonInspector({
   const activeOffset = Math.max(0, positions.indexOf(selectedBase));
   const draftResult =
     draft && positions.includes(draft.position)
-      ? analyzeMutation(gene.sequence, draft.position, draft.alt)
+      ? analyzeMutation(gene.sequence, draft.position, draft.alt, frame)
       : null;
   const curated = frame === 0
     ? gene.variants.filter((variant) => Math.floor((variant.position - 1) / 3) === codonIndex)
@@ -307,7 +308,7 @@ function CodonInspector({
 
   const setAlt = (position: number, alt: string) => {
     onSelectBase(position);
-    onDraftChange({ position, alt });
+    onDraftChange({ position, alt, frame });
   };
 
   return (
@@ -433,7 +434,7 @@ function CodonInspector({
               className="curated-chip"
               onClick={() => {
                 onSelectBase(variant.position);
-                onDraftChange({ position: variant.position, alt: variant.alt });
+                onDraftChange({ position: variant.position, alt: variant.alt, frame: 0 });
               }}
             >
               {variant.name}
