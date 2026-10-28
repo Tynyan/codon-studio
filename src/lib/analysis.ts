@@ -1,6 +1,6 @@
 import {
   AMINO_ACIDS,
-  analyzeMutation,
+  analyzeEdit,
   baseComposition,
   classifyMutation,
   codonUsageStats,
@@ -17,7 +17,7 @@ import {
   type AminoAcidCode,
   type MutationAnalysis,
 } from "./genetics";
-import type { Gene, GeneVariant, MutationFilter } from "../types";
+import type { Gene, GeneVariant, MutationFilter, SequenceEdit } from "../types";
 
 export interface GeneAnalysis {
   length: number;
@@ -61,7 +61,12 @@ export interface VariantResult {
 }
 
 export function analyzeVariant(gene: Gene, variant: GeneVariant): VariantResult {
-  return buildVariantResult(gene, variant.position, variant.alt, variant);
+  const edit: SequenceEdit = variant.edit ?? {
+    type: "substitution",
+    position: variant.position,
+    alt: variant.alt,
+  };
+  return buildEditResult(gene, edit, variant);
 }
 
 export function buildVariantResult(
@@ -71,12 +76,30 @@ export function buildVariantResult(
   variant: GeneVariant | null = null,
   frame = 0,
 ): VariantResult {
-  const analysis = analyzeMutation(gene.sequence, position, alt, frame);
+  return buildEditResult(
+    gene,
+    { type: "substitution", position, alt },
+    variant,
+    frame,
+  );
+}
+
+export function buildEditResult(
+  gene: Gene,
+  edit: SequenceEdit,
+  variant: GeneVariant | null = null,
+  frame = 0,
+): VariantResult {
+  const analysis = analyzeEdit(gene.sequence, edit, frame);
   const radical =
     Math.abs(analysis.hydropathyDelta) >= 1.5 ||
     Math.abs(analysis.chargeDelta) >= 0.8 ||
     analysis.kind === "nonsense" ||
-    analysis.kind === "stop-loss";
+    analysis.kind === "stop-loss" ||
+    analysis.kind === "frameshift" ||
+    analysis.kind === "in-frame-deletion" ||
+    analysis.kind === "in-frame-insertion" ||
+    analysis.refProteinLength !== analysis.altProteinLength;
   return {
     variant,
     analysis,
@@ -96,6 +119,12 @@ function describeImpact(analysis: MutationAnalysis, radical: boolean): string {
   }
   if (analysis.kind === "stop-loss") {
     return "终止密码子被替换，翻译会继续延伸到下一个终止信号。";
+  }
+  if (analysis.kind === "frameshift") {
+    return "编辑长度不是 3 的倍数，下游阅读框被整体改变，通常会产生截短或完全不同的蛋白。";
+  }
+  if (analysis.kind === "in-frame-deletion" || analysis.kind === "in-frame-insertion") {
+    return "读框保持不变，但蛋白长度改变；缺失或插入的残基仍可能破坏折叠、结构域界面或运输信号。";
   }
   if (radical) {
     return "侧链性质变化明显：疏水性或电荷差异可能影响折叠、结合或稳定性。";

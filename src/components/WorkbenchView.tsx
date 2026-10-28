@@ -47,7 +47,7 @@ export function WorkbenchView({
       <ViewIntro
         eyebrow={
           <>
-            SAMPLE {gene.id === "S" ? "04" : gene.id === "TP53" ? "03" : gene.id === "INS" ? "02" : "01"}
+            SAMPLE {gene.id === "S" ? "04" : gene.id === "CFTR" ? "05" : gene.id === "TP53" ? "03" : gene.id === "INS" ? "02" : "01"}
             <span className="eyebrow-divider">/</span>
             {gene.organism}
             <span className="eyebrow-divider">/</span>
@@ -141,7 +141,7 @@ export function WorkbenchView({
         <Panel
           className={cx("spotlight-panel", `spotlight-panel--${tabClass}`)}
           kicker={featured ? "VARIANT SPOTLIGHT" : "VARIANT PLAYGROUND"}
-          title={featured ? "One letter changes the story" : "Make your own mutation"}
+          title={featured ? (featuredResult?.analysis.editType === "substitution" ? "One letter changes the story" : "A small edit, a broken fold") : "Make your own mutation"}
           action={
             <button type="button" className="icon-link" onClick={onOpenVariantLab} aria-label="打开变异实验室">
               <ArrowUpRight size={16} />
@@ -156,35 +156,47 @@ export function WorkbenchView({
                   {classifyMutation(featuredResult.analysis)}
                 </Badge>
               </div>
-              <div className="dna-diff" aria-label={`${featuredResult.analysis.refCodon} becomes ${featuredResult.analysis.altCodon}`}>
-                <div className="dna-diff-code">
-                  {featuredResult.analysis.refCodon.split("").map((base, index) => (
-                    <span
-                      key={index}
-                      className={cx(index === (featured.position - 1) % 3 && "is-changed")}
-                      style={{ color: index === (featured.position - 1) % 3 ? "#ff8ba0" : BASE_META[base as keyof typeof BASE_META]?.color }}
-                    >
-                      {base}
-                    </span>
-                  ))}
+              {featuredResult.analysis.editType === "substitution" ? (
+                <div className="dna-diff" aria-label={`${featuredResult.analysis.refCodon} becomes ${featuredResult.analysis.altCodon}`}>
+                  <div className="dna-diff-code">
+                    {featuredResult.analysis.refCodon.split("").map((base, index) => (
+                      <span
+                        key={index}
+                        className={cx(index === (featured.position - 1) % 3 && "is-changed")}
+                        style={{ color: index === (featured.position - 1) % 3 ? "#ff8ba0" : BASE_META[base as keyof typeof BASE_META]?.color }}
+                      >
+                        {base}
+                      </span>
+                    ))}
+                  </div>
+                  <span className="dna-diff-arrow">→</span>
+                  <div className="dna-diff-code dna-diff-code--alt">
+                    {featuredResult.analysis.altCodon.split("").map((base, index) => (
+                      <span
+                        key={index}
+                        className={cx(index === (featured.position - 1) % 3 && "is-changed")}
+                        style={{ color: index === (featured.position - 1) % 3 ? "#c8ff5e" : BASE_META[base as keyof typeof BASE_META]?.color }}
+                      >
+                        {base}
+                      </span>
+                    ))}
+                  </div>
                 </div>
-                <span className="dna-diff-arrow">→</span>
-                <div className="dna-diff-code dna-diff-code--alt">
-                  {featuredResult.analysis.altCodon.split("").map((base, index) => (
-                    <span
-                      key={index}
-                      className={cx(index === (featured.position - 1) % 3 && "is-changed")}
-                      style={{ color: index === (featured.position - 1) % 3 ? "#c8ff5e" : BASE_META[base as keyof typeof BASE_META]?.color }}
-                    >
-                      {base}
-                    </span>
-                  ))}
+              ) : (
+                <div className="dna-diff dna-diff--indel">
+                  <div className="dna-diff-code">
+                    <span className="is-changed">{featuredResult.analysis.deleted ?? featuredResult.analysis.inserted}</span>
+                  </div>
+                  <span className="dna-diff-arrow">{featuredResult.analysis.editType === "deletion" ? "−" : "+"}</span>
+                  <div className="dna-diff-code dna-diff-code--alt">
+                    <span>{featuredResult.analysis.editType === "deletion" ? "—" : `${featuredResult.analysis.inserted?.length ?? 0} bp`}</span>
+                  </div>
                 </div>
-              </div>
+              )}
               <div className="aa-diff">
                 <span>{AMINO_ACIDS[featuredResult.analysis.refAa].three}</span>
                 <span className="aa-diff-arrow">→</span>
-                <strong>{featuredResult.analysis.altAa === "*" ? "Stop" : AMINO_ACIDS[featuredResult.analysis.altAa].three}</strong>
+                <strong>{featuredResult.analysis.editType === "deletion" ? "—" : featuredResult.analysis.altAa === "*" ? "Stop" : AMINO_ACIDS[featuredResult.analysis.altAa].three}</strong>
                 <em>{featured.proteinChange}</em>
               </div>
               <div className="spotlight-phenotype">{featured.phenotype}</div>

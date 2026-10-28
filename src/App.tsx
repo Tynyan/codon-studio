@@ -15,11 +15,12 @@ import { FramesView } from "./components/FramesView";
 import { ProteinView } from "./components/ProteinView";
 import { VariantsView } from "./components/VariantsView";
 import { CodonView } from "./components/CodonView";
+import { EvolutionView } from "./components/EvolutionView";
 import { MethodsView } from "./components/MethodsView";
 import type { DraftMutation } from "./components/SequenceStage";
 import { cx } from "./lib/cx";
 
-const VIEWS: ViewId[] = ["workbench", "frames", "protein", "variants", "codons", "methods"];
+const VIEWS: ViewId[] = ["workbench", "frames", "protein", "variants", "codons", "evolution", "methods"];
 
 function isView(value: string | null): value is ViewId {
   return value !== null && VIEWS.includes(value as ViewId);
@@ -28,18 +29,21 @@ function isView(value: string | null): value is ViewId {
 function readInitialState() {
   const params = new URLSearchParams(window.location.search);
   const requestedGene = params.get("gene");
+  const view = isView(params.get("view")) ? (params.get("view") as ViewId) : "workbench";
   const available = [...GENES, ...loadCustomGenes()];
-  const gene = requestedGene
-    ? available.find((item) => item.id === requestedGene) ?? GENE_BY_ID[DEFAULT_GENE_ID]
-    : GENE_BY_ID[DEFAULT_GENE_ID];
-  const geneId = gene.id;
-  const frame = clamp(Number(params.get("frame") ?? 1) - 1, 0, 2);
-  const totalCodons = Math.max(1, Math.ceil(gene.sequence.length / 3));
-  const codon = clamp(Number(params.get("codon") ?? 1) - 1, 0, totalCodons - 1);
-  const variant = gene.variants.find((item) => item.id === params.get("variant")) ?? gene.variants[0] ?? null;
+  const selectedGene = view === "evolution"
+    ? GENE_BY_ID.HBB
+    : requestedGene
+      ? available.find((item) => item.id === requestedGene) ?? GENE_BY_ID[DEFAULT_GENE_ID]
+      : GENE_BY_ID[DEFAULT_GENE_ID];
+  const geneId = selectedGene.id;
+  const frame = view === "evolution" ? 0 : clamp(Number(params.get("frame") ?? 1) - 1, 0, 2);
+  const totalCodons = Math.max(1, Math.ceil(selectedGene.sequence.length / 3));
+  const codon = view === "evolution" ? 0 : clamp(Number(params.get("codon") ?? 1) - 1, 0, totalCodons - 1);
+  const variant = selectedGene.variants.find((item) => item.id === params.get("variant")) ?? selectedGene.variants[0] ?? null;
   return {
     geneId,
-    view: isView(params.get("view")) ? (params.get("view") as ViewId) : "workbench",
+    view,
     frame,
     codon,
     variantId: variant?.id ?? null,
@@ -86,6 +90,16 @@ function App() {
   }, [gene.displayName]);
 
   const goToView = (nextView: ViewId) => {
+    if (nextView === "evolution" && gene.id !== "HBB") {
+      const hbb = GENE_BY_ID.HBB;
+      setGeneId(hbb.id);
+      setFrame(0);
+      setSelectedCodon(0);
+      setSelectedBase(1);
+      setSelectedResidue(1);
+      setDraft(null);
+      setSelectedVariantId(hbb.variants[0]?.id ?? null);
+    }
     setView(nextView);
     if (nextView === "variants") {
       if (draft) setSelectedVariantId(null);
@@ -266,6 +280,7 @@ function App() {
               />
             )}
             {view === "codons" && <CodonView gene={gene} analysis={analysis} />}
+            {view === "evolution" && <EvolutionView />}
             {view === "methods" && <MethodsView />}
           </div>
 

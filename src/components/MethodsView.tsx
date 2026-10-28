@@ -16,8 +16,13 @@ import { Badge, Panel, ViewIntro } from "./ui";
 const REFERENCES = [
   {
     title: "NCBI RefSeq",
-    detail: "HBB NM_000518.5 · INS NM_000207.3 · TP53 NM_000546.6",
+    detail: "HBB NM_000518.5 · INS NM_000207.3 · TP53 NM_000546.6 · CFTR NM_000492.4",
     href: "https://www.ncbi.nlm.nih.gov/refseq/",
+  },
+  {
+    title: "NCBI Protein · HBB orthologs",
+    detail: "Seven vertebrate beta-globin records used in the evolution view",
+    href: "https://www.ncbi.nlm.nih.gov/protein/",
   },
   {
     title: "NCBI GenBank · SARS-CoV-2",
@@ -28,6 +33,16 @@ const REFERENCES = [
     title: "Kazusa codon usage database",
     detail: "Homo sapiens, 93,487 CDS, 40,662,582 codons",
     href: "https://www.kazusa.or.jp/codon/",
+  },
+  {
+    title: "Henikoff & Henikoff, 1992",
+    detail: "Amino acid substitution matrices from protein blocks (BLOSUM62)",
+    href: "https://doi.org/10.1073/pnas.89.22.10915",
+  },
+  {
+    title: "Saitou & Nei, 1987",
+    detail: "The neighbor-joining method for phylogenetic tree reconstruction",
+    href: "https://doi.org/10.1093/oxfordjournals.molbev.a040454",
   },
   {
     title: "Kyte & Doolittle, 1982",
@@ -53,7 +68,7 @@ export function MethodsView() {
         eyebrow={<>METHODS / DATA / LIMITATIONS</>}
         title="Show your"
         accent="work."
-        description="这个项目把每一个数字都拆成可检查的步骤：序列从哪里来、密码子怎样翻译、ORF 如何定义、pI 和 CAI 用什么公式，以及哪些结论不能从一条序列里直接得出。"
+        description="这个项目把每一个数字都拆成可检查的步骤：序列从哪里来、密码子怎样翻译、ORF 如何定义、多序列比对和进化树如何构建、pI 和 CAI 用什么公式，以及哪些结论不能从一条序列里直接得出。"
         tags={["Reproducible", "Open source", "Client-side", "MIT"]}
       >
         <div className="mini-stat-grid">
@@ -68,7 +83,7 @@ export function MethodsView() {
         <Panel className="method-data" kicker="DATA PROVENANCE" title="Where the sequences come from" action={<Database size={17} />}>
           <p className="panel-copy">
             所有内置序列都通过 NCBI E-utilities 获取并随项目离线打包。重新生成数据只需运行
-            <code>python scripts/fetch-data.py</code>。
+            <code>python scripts/fetch-data.py</code>。Evolution 视图使用 7 条 HBB 同源蛋白（人、小鼠、大鼠、牛、鸡、非洲爪蟾、斑马鱼），其中爪蟾记录来自 GenBank。
           </p>
           <div className="data-table-wrap">
             <table className="data-table">
@@ -108,6 +123,14 @@ export function MethodsView() {
               <p>正向与反向互补序列各取 3 个相位，从每个 ATG 扫描到同框终止密码子。默认展示 ≥20 aa 的 ORF，并按长度排序。</p>
             </div>
             <div>
+              <strong>Indels / frameshift</strong>
+              <p>把编辑写成“位置 + 长度 + 插入序列”，重新翻译整条 CDS。长度变化不是 3 的倍数时判为 frameshift；否则判为整码缺失 / 插入，并比较蛋白长度、终止位置和理化性质。</p>
+            </div>
+            <div>
+              <strong>MSA / neighbor joining</strong>
+              <p>以人 HBB 为中心序列，使用 BLOSUM62 和线性空位罚分做成对全局比对，再投影成中心星多序列比对。两两 identity 转成 p-distance，用 Neighbor-Joining 建树并以斑马鱼为外群。</p>
+            </div>
+            <div>
               <strong>Molecular weight</strong>
               <p><code>Σ residue mass − 18.015 × (n − 1)</code>，使用平均残基质量，单位为 Da。</p>
             </div>
@@ -135,7 +158,8 @@ export function MethodsView() {
             <li><span>01</span><p>理化性质变化是启发式指标，不等于致病性预测；真实影响需要结构、保守性、实验和临床证据。</p></li>
             <li><span>02</span><p>ORF 只是“可能编码”的开放阅读框，不代表真实启动子、剪接位点或翻译产物。</p></li>
             <li><span>03</span><p>CAI 使用人类参考表；病毒、细菌或叶绿体基因的密码子偏好需要换成对应宿主 / 物种的参考集。</p></li>
-            <li><span>04</span><p>项目不进行多序列比对、系统发育推断、三维结构预测或变异临床分级。</p></li>
+            <li><span>04</span><p>Evolution 视图展示的是单基因树，不是物种树；中心星比对、p-distance 和 NJ 都可能受长枝吸引与比对误差影响，不能替代数据库中的手工 / 模型比对。</p></li>
+            <li><span>05</span><p>项目不进行三维结构预测、分子动力学模拟或变异临床分级。</p></li>
           </ul>
           <div className="limit-note">
             <Info size={14} />
@@ -147,8 +171,8 @@ export function MethodsView() {
           <div className="stack-list">
             <div><span>UI</span><strong>React 19 + TypeScript + Vite</strong></div>
             <div><span>Charts</span><strong>Hand-built SVG &amp; CSS, no chart library</strong></div>
-            <div><span>Algorithms</span><strong>Pure TypeScript, unit-tested with Vitest</strong></div>
             <div><span>Data</span><strong>NCBI RefSeq / GenBank + Kazusa, bundled offline</strong></div>
+            <div><span>Algorithms</span><strong>Translation, ORF, BLOSUM62 MSA, NJ, indel engine; Vitest</strong></div>
             <div><span>Hosting</span><strong>Static build, GitHub Pages ready</strong></div>
           </div>
           <p className="panel-copy panel-copy--small">

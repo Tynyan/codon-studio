@@ -21,11 +21,13 @@ const page = await browser.newPage({ viewport: { width: 1440, height: 1000 }, de
 
 const targets = [
   { name: "screenshot.png", query: "", fullPage: true },
+  { name: "screenshot-evolution.png", query: "?gene=HBB&view=evolution", fullPage: true },
   { name: "screenshot-variants.png", query: "?gene=HBB&view=variants&variant=HbS", fullPage: false },
+  { name: "screenshot-cftr.png", query: "?gene=CFTR&view=variants&variant=F508del", fullPage: true },
   { name: "screenshot-protein.png", query: "?gene=TP53&view=protein", fullPage: false },
   { name: "screenshot-codons.png", query: "?gene=TP53&view=codons", fullPage: false },
   { name: "screenshot-frames.png", query: "?gene=S&view=frames", fullPage: false },
-  { name: "screenshot-methods.png", query: "?gene=HBB&view=methods", fullPage: false },
+  { name: "screenshot-methods.png", query: "?gene=HBB&view=methods", fullPage: true },
   { name: "screenshot-mobile.png", query: "", fullPage: false, mobile: true },
 ];
 

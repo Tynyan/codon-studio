@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { GENE_BY_ID } from "../data/catalog";
 import {
+  analyzeEdit,
   analyzeMutation,
   chargeAtPh,
   codonUsageStats,
@@ -15,6 +16,7 @@ import {
   reverseComplement,
   translate,
 } from "./genetics";
+import { analyzeVariant } from "./analysis";
 
 describe("sequence primitives", () => {
   it("normalizes FASTA, RNA and whitespace", () => {
@@ -99,6 +101,39 @@ describe("curated variant positions", () => {
     const n501 = analyzeMutation(GENE_BY_ID.S.sequence, 1501, "T");
     expect([d614.refCodon, d614.altCodon, d614.refAa, d614.altAa]).toEqual(["GAT", "GGT", "D", "G"]);
     expect([n501.refCodon, n501.altCodon, n501.refAa, n501.altAa]).toEqual(["AAT", "TAT", "N", "Y"]);
+  });
+});
+
+describe("indel editing", () => {
+  const cftr = GENE_BY_ID.CFTR;
+
+  it("keeps the CFTR CDS and identifies F508del as an in-frame deletion", () => {
+    expect(cftr.sequence).toHaveLength(4443);
+    expect(cftr.protein).toHaveLength(1480);
+    const result = analyzeVariant(cftr, cftr.variants[0]);
+    expect(result.analysis.editType).toBe("deletion");
+    expect(result.analysis.kind).toBe("in-frame-deletion");
+    expect(result.analysis.deleted).toBe("TTT");
+    expect(result.analysis.refCodon).toBe("TTT");
+    expect(result.analysis.refProteinLength).toBe(1480);
+    expect(result.analysis.altProteinLength).toBe(1479);
+    expect(result.analysis.codonIndex).toBe(507);
+  });
+
+  it("classifies a 1 bp deletion as a frameshift", () => {
+    const result = analyzeEdit(cftr.sequence, { type: "deletion", position: 1522, length: 1 });
+    expect(result.kind).toBe("frameshift");
+    expect(result.altProteinLength).not.toBe(result.refProteinLength);
+  });
+
+  it("classifies a 3 bp insertion as in-frame", () => {
+    const result = analyzeEdit("ATGGCCGCCGCCGCCGCCGCCGCCGCCGCCGCCGCCGCCGCCGCCGCCGCC", {
+      type: "insertion",
+      position: 3,
+      inserted: "AAA",
+    });
+    expect(result.kind).toBe("in-frame-insertion");
+    expect(result.altProteinLength).toBe(result.refProteinLength + 1);
   });
 });
 

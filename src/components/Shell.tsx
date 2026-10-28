@@ -61,7 +61,7 @@ export function Sidebar({
           className={cx("side-nav-item side-nav-item--compact", view === "methods" && "is-active")}
           onClick={onOpenMethod}
         >
-          <span className="nav-index">06</span>
+          <span className="nav-index">07</span>
           <BookOpen size={17} strokeWidth={1.6} />
           <span className="nav-copy">
             <strong>方法与数据</strong>
@@ -194,7 +194,7 @@ export function MobileNav({
             onClick={() => onViewChange(item.id)}
           >
             <span>{item.index}</span>
-            {item.label}
+            {item.mobileLabel ?? item.label}
           </button>
         ))}
         <button
@@ -202,7 +202,7 @@ export function MobileNav({
           className={cx("mobile-tab", view === "methods" && "is-active")}
           onClick={() => onViewChange("methods")}
         >
-          <span>06</span>
+          <span>07</span>
           方法
         </button>
       </div>

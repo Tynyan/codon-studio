@@ -10,16 +10,17 @@ import {
   Sparkles,
   TriangleAlert,
 } from "lucide-react";
-import type { Gene, GeneVariant } from "../types";
+import type { Gene, GeneVariant, SequenceEdit } from "../types";
 import type { GeneAnalysis, VariantResult } from "../lib/analysis";
-import { analyzeVariant, buildVariantResult, getPropertyImpacts } from "../lib/analysis";
-import { AMINO_ACIDS, BASE_META } from "../lib/genetics";
+import { analyzeVariant, buildEditResult, getPropertyImpacts } from "../lib/analysis";
+import { AMINO_ACIDS, BASE_META, normalizeSequence } from "../lib/genetics";
 import { clamp, formatInt } from "../lib/format";
 import type { DraftMutation } from "./SequenceStage";
-import { Badge, EmptyState, Panel, ViewIntro } from "./ui";
+import { Badge, EmptyState, Panel, Segmented, ViewIntro } from "./ui";
 import { cx } from "../lib/cx";
 
 type Tone = "good" | "warn" | "bad" | "neutral";
+type EditMode = SequenceEdit["type"];
 
 function badgeTone(tone: Tone): "lime" | "amber" | "coral" | "muted" {
   if (tone === "good") return "lime";
@@ -46,13 +47,18 @@ export function VariantsView({
   onOpenCodon: (codonIndex: number, frame?: number) => void;
 }) {
   const selectedVariant = gene.variants.find((variant) => variant.id === selectedVariantId) ?? null;
-  const [customPosition, setCustomPosition] = useState(draft?.position ?? selectedVariant?.position ?? 1);
+  const [customPosition, setCustomPosition] = useState(selectedVariant?.position ?? draft?.position ?? 1);
+  const [editMode, setEditMode] = useState<EditMode>(selectedVariant?.edit?.type ?? "substitution");
+  const [customEdit, setCustomEdit] = useState<SequenceEdit | null>(null);
+  const [inserted, setInserted] = useState("G");
 
-  const activeResult: VariantResult | null = draft
-    ? buildVariantResult(gene, draft.position, draft.alt, null, draft.frame ?? 0)
-    : selectedVariant
-      ? analyzeVariant(gene, selectedVariant)
-      : null;
+  const activeResult: VariantResult | null = customEdit
+    ? buildEditResult(gene, customEdit)
+    : draft
+      ? buildEditResult(gene, { type: "substitution", position: draft.position, alt: draft.alt }, null, draft.frame ?? 0)
+      : selectedVariant
+        ? analyzeVariant(gene, selectedVariant)
+        : null;
 
   const safePosition = clamp(customPosition, 1, gene.sequence.length);
   const refBase = gene.sequence[safePosition - 1] ?? "A";
@@ -65,17 +71,45 @@ export function VariantsView({
 
   const chooseVariant = (variant: GeneVariant) => {
     onDraftChange(null);
+    setCustomEdit(null);
     onSelectVariant(variant.id);
     setCustomPosition(variant.position);
+    setEditMode(variant.edit?.type ?? "substitution");
   };
 
   const chooseCustom = (position: number, alt: string) => {
+    setCustomEdit(null);
     onSelectVariant(null);
     onDraftChange({ position, alt, frame: draft?.frame ?? 0 });
     setCustomPosition(position);
   };
 
+  const chooseEdit = (edit: SequenceEdit) => {
+    onDraftChange(null);
+    onSelectVariant(null);
+    setCustomEdit(edit);
+    setCustomPosition(edit.position);
+    setEditMode(edit.type);
+  };
+
   const randomise = () => {
+    if (editMode === "deletion") {
+      chooseEdit({
+        type: "deletion",
+        position: Math.floor(Math.random() * Math.max(1, gene.sequence.length - 9)) + 1,
+        length: 3,
+      });
+      return;
+    }
+    if (editMode === "insertion") {
+      const bases = Array.from({ length: 3 }, () => "ATGC"[Math.floor(Math.random() * 4)]).join("");
+      chooseEdit({
+        type: "insertion",
+        position: Math.floor(Math.random() * Math.max(1, gene.sequence.length - 1)) + 1,
+        inserted: bases,
+      });
+      return;
+    }
     const position = Math.floor(Math.random() * gene.sequence.length) + 1;
     const ref = gene.sequence[position - 1];
     const choices = (["A", "T", "G", "C"] as const).filter((base) => base !== ref);
@@ -85,18 +119,23 @@ export function VariantsView({
   const result = activeResult;
   const analysisResult = result?.analysis ?? null;
   const impacts = analysisResult ? getPropertyImpacts(analysisResult) : [];
-  const changeLabel = analysisResult
-    ? `p.${AMINO_ACIDS[analysisResult.refAa].three}${analysisResult.codonIndex + 1}${analysisResult.altAa === "*" ? "*" : AMINO_ACIDS[analysisResult.altAa].three}`
-    : "";
+  const changeLabel = selectedVariant?.proteinChange
+    ?? (analysisResult
+      ? analysisResult.editType === "substitution"
+        ? `p.${AMINO_ACIDS[analysisResult.refAa].three}${analysisResult.codonIndex + 1}${analysisResult.altAa === "*" ? "*" : AMINO_ACIDS[analysisResult.altAa].three}`
+        : analysisResult.editType === "deletion"
+          ? `p.${AMINO_ACIDS[analysisResult.refAa].three}${analysisResult.codonIndex + 1}del`
+          : `p.${AMINO_ACIDS[analysisResult.refAa].three}${analysisResult.codonIndex + 1}ins`
+      : "");
 
   return (
     <div className="view view--variants">
       <ViewIntro
         eyebrow={<>VARIANT LAB / {gene.accession}</>}
-        title="A single letter"
+        title="A tiny edit"
         accent="can change everything."
-        description="选择一个真实变异，或亲手改写一个碱基。Codon Studio 会即时重算密码子、氨基酸、蛋白长度和理化性质，并标出它为何可能重要。"
-        tags={["Point mutation", "Missense", "Nonsense", "Protein impact"]}
+        description="选择一个真实变异，或亲手改写、删除、插入一段序列。Codon Studio 会即时重算密码子、氨基酸、蛋白长度和理化性质，并标出它为何可能重要。"
+        tags={["SNV", "In-frame deletion", "Frameshift", "Protein impact"]}
       >
         <div className="mini-stat-grid">
           <div><span>Curated</span><strong>{gene.variants.length}</strong><em>known variants</em></div>
@@ -138,7 +177,7 @@ export function VariantsView({
                       type="button"
                       className={cx(
                         "variant-list-item",
-                        selectedVariant?.id === variant.id && !draft && "is-active",
+                        selectedVariant?.id === variant.id && !draft && !customEdit && "is-active",
                       )}
                       onClick={() => chooseVariant(variant)}
                     >
@@ -149,7 +188,13 @@ export function VariantsView({
                       <span className="variant-list-phenotype">{variant.phenotype}</span>
                       <div className="variant-list-meta">
                         <span>{variant.proteinChange}</span>
-                        <span>c.{variant.position}{gene.sequence[variant.position - 1]}→{variant.alt}</span>
+                        <span>
+                          {variant.edit?.type === "deletion"
+                            ? variant.legacyName ?? `c.${variant.position}del`
+                            : variant.edit?.type === "insertion"
+                              ? `c.${variant.position}ins${variant.edit.inserted}`
+                              : `c.${variant.position}${gene.sequence[variant.position - 1]}→${variant.alt}`}
+                        </span>
                       </div>
                     </button>
                   );
@@ -172,6 +217,22 @@ export function VariantsView({
             }
           >
             <div className="custom-editor">
+              <Segmented
+                value={editMode}
+                options={[
+                  { value: "substitution", label: "SNV" },
+                  { value: "deletion", label: "DEL" },
+                  { value: "insertion", label: "INS" },
+                ]}
+                onChange={(mode) => {
+                  setEditMode(mode);
+                  setCustomEdit(null);
+                  onSelectVariant(null);
+                  onDraftChange(null);
+                }}
+                label="Edit type"
+                className="segmented--small"
+              />
               <label className="field field--compact">
                 <span className="field-label">Coding position <em>1–{gene.sequence.length}</em></span>
                 <div className="position-row">
@@ -219,27 +280,80 @@ export function VariantsView({
                 }}
                 aria-label="Mutation position"
               />
-              <div className="alt-row">
-                <span className="alt-row-label">MUTATE TO</span>
-                {altOptions.map((alt) => {
-                  const active = draft?.position === safePosition && draft.alt === alt;
-                  return (
+              {editMode === "substitution" && (
+                <div className="alt-row">
+                  <span className="alt-row-label">MUTATE TO</span>
+                  {altOptions.map((alt) => {
+                    const active = draft?.position === safePosition && draft.alt === alt;
+                    return (
+                      <button
+                        key={alt}
+                        type="button"
+                        className={cx("alt-base alt-base--large", active && "is-active")}
+                        style={{ color: BASE_META[alt].color }}
+                        onClick={() => chooseCustom(safePosition, alt)}
+                      >
+                        {alt}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              {editMode === "deletion" && (
+                <div className="indel-control">
+                  <span className="alt-row-label">DELETE</span>
+                  {[1, 3, 6, 9].map((length) => (
                     <button
-                      key={alt}
+                      key={length}
                       type="button"
-                      className={cx("alt-base alt-base--large", active && "is-active")}
-                      style={{ color: BASE_META[alt].color }}
-                      onClick={() => chooseCustom(safePosition, alt)}
+                      className={cx(
+                        "indel-chip",
+                        customEdit?.type === "deletion" && customEdit.position === safePosition && customEdit.length === length && "is-active",
+                      )}
+                      onClick={() => chooseEdit({ type: "deletion", position: safePosition, length })}
                     >
-                      {alt}
+                      {length} bp
                     </button>
-                  );
-                })}
-              </div>
+                  ))}
+                </div>
+              )}
+
+              {editMode === "insertion" && (
+                <div className="indel-control indel-control--insert">
+                  <span className="alt-row-label">INSERT</span>
+                  <input
+                    type="text"
+                    value={inserted}
+                    onChange={(event) => setInserted(event.target.value.toUpperCase().replace(/[^ACGTU]/g, "").slice(0, 9))}
+                    placeholder="ACGT"
+                    aria-label="Inserted bases"
+                  />
+                  <button
+                    type="button"
+                    className="indel-chip indel-chip--apply"
+                    disabled={!normalizeSequence(inserted)}
+                    onClick={() => chooseEdit({ type: "insertion", position: safePosition, inserted: normalizeSequence(inserted) })}
+                  >
+                    apply
+                  </button>
+                </div>
+              )}
+
               <div className="custom-preview">
-                <span>{previewRef}</span>
+                <span>
+                  {customEdit?.type === "deletion"
+                    ? gene.sequence.slice(customEdit.position - 1, customEdit.position - 1 + customEdit.length)
+                    : previewRef}
+                </span>
                 <MoveRight size={14} />
-                <strong>{previewAlt}</strong>
+                <strong>
+                  {customEdit?.type === "deletion"
+                    ? "—"
+                    : customEdit?.type === "insertion"
+                      ? customEdit.inserted
+                      : previewAlt}
+                </strong>
               </div>
             </div>
           </Panel>
@@ -250,15 +364,29 @@ export function VariantsView({
             <Panel className={cx("variant-detail", `tone-${result.tone}`)}>
               <div className="variant-detail-head">
                 <div>
-                  <div className="panel-kicker">{selectedVariant ? "CURATED VARIANT" : "CUSTOM MUTATION"}</div>
+                  <div className="panel-kicker">{selectedVariant ? "CURATED VARIANT" : "CUSTOM EDIT"}</div>
                   <h2>{selectedVariant?.name ?? changeLabel}</h2>
-                  <p>{selectedVariant?.phenotype ?? "用户自定义点突变"}</p>
+                  <p>{selectedVariant?.phenotype ?? "用户自定义序列编辑"}</p>
                 </div>
                 <div className="variant-detail-badges">
                   {analysisResult.frame !== 0 && <Badge tone="violet">frame +{analysisResult.frame + 1}</Badge>}
                   <Badge tone={badgeTone(result.tone)}>{result.label}</Badge>
                 </div>
               </div>
+
+              {analysisResult.editType !== "substitution" && (
+                <div className="edit-summary">
+                  <Badge tone={analysisResult.kind === "frameshift" ? "coral" : "amber"}>
+                    {analysisResult.kind === "frameshift" ? "frameshift" : analysisResult.kind === "in-frame-deletion" ? "in-frame deletion" : "in-frame insertion"}
+                  </Badge>
+                  <span>
+                    {analysisResult.editType === "deletion"
+                      ? `deleted ${analysisResult.deleted ?? "—"}`
+                      : `inserted ${analysisResult.inserted ?? "—"}`}
+                  </span>
+                  <em>{analysisResult.refProteinLength} → {analysisResult.altProteinLength} aa</em>
+                </div>
+              )}
 
               <div className="allele-stage">
                 <div className="allele-card allele-card--ref">
@@ -274,19 +402,39 @@ export function VariantsView({
                 <div className="allele-arrow"><ArrowUpRight size={20} /></div>
                 <div className="allele-card allele-card--alt">
                   <span className="allele-kicker">VARIANT</span>
-                  <div className="allele-codon">
-                    {analysisResult.altCodon.split("").map((base, index) => (
-                      <span
-                        key={index}
-                        className={cx(index === (analysisResult.position - 1) % 3 && "is-changed")}
-                        style={{ color: BASE_META[base as keyof typeof BASE_META]?.color }}
-                      >
-                        {base}
-                      </span>
-                    ))}
+                  <div className={cx("allele-codon", analysisResult.editType !== "substitution" && "allele-codon--indel")}>
+                    {analysisResult.editType === "deletion" ? (
+                      <span>—</span>
+                    ) : analysisResult.editType === "insertion" ? (
+                      <span>+{analysisResult.inserted}</span>
+                    ) : (
+                      analysisResult.altCodon.split("").map((base, index) => (
+                        <span
+                          key={index}
+                          className={cx(index === (analysisResult.position - 1) % 3 && "is-changed")}
+                          style={{ color: BASE_META[base as keyof typeof BASE_META]?.color }}
+                        >
+                          {base}
+                        </span>
+                      ))
+                    )}
                   </div>
-                  <div className="allele-aa">{analysisResult.altAa === "*" ? "Stop" : `${AMINO_ACIDS[analysisResult.altAa].three} · ${AMINO_ACIDS[analysisResult.altAa].nameZh}`}</div>
-                  <div className="allele-coord">{changeLabel} · c.{analysisResult.position}{analysisResult.ref}→{analysisResult.alt}</div>
+                  <div className="allele-aa">
+                    {analysisResult.editType === "deletion"
+                      ? "residue removed"
+                      : analysisResult.editType === "insertion"
+                        ? `${analysisResult.inserted?.length ?? 0} bp inserted`
+                        : analysisResult.altAa === "*"
+                          ? "Stop"
+                          : `${AMINO_ACIDS[analysisResult.altAa].three} · ${AMINO_ACIDS[analysisResult.altAa].nameZh}`}
+                  </div>
+                  <div className="allele-coord">
+                    {analysisResult.editType === "substitution"
+                      ? `${changeLabel} · c.${analysisResult.position}${analysisResult.ref}→${analysisResult.alt}`
+                      : analysisResult.editType === "deletion"
+                        ? `${changeLabel} · del ${analysisResult.deleted ?? ""}`
+                        : `${changeLabel} · ins ${analysisResult.inserted ?? ""}`}
+                  </div>
                 </div>
               </div>
 
@@ -295,7 +443,15 @@ export function VariantsView({
                   {result.tone === "bad" ? <TriangleAlert size={18} /> : result.tone === "good" ? <Sparkles size={18} /> : <Info size={18} />}
                 </div>
                 <div>
-                  <strong>{result.radical ? "Side-chain properties change sharply" : "A more conservative substitution"}</strong>
+                  <strong>
+                    {analysisResult.kind === "frameshift"
+                      ? "The reading frame is broken"
+                      : analysisResult.kind === "in-frame-deletion" || analysisResult.kind === "in-frame-insertion"
+                        ? "The frame is intact, but the protein is changed"
+                        : result.radical
+                          ? "Side-chain properties change sharply"
+                          : "A more conservative substitution"}
+                  </strong>
                   <p>{result.impact}</p>
                 </div>
               </div>
@@ -320,9 +476,19 @@ export function VariantsView({
                 <button type="button" className="text-button" onClick={() => onOpenCodon(analysisResult.codonIndex, analysisResult.frame)}>
                   在工作台中查看这个密码子 <ArrowUpRight size={14} />
                 </button>
-                <button type="button" className="ghost-button" onClick={() => onDraftChange(null)}>
-                  清除模拟
-                </button>
+                {(!selectedVariant || customEdit || draft) && (
+                  <button
+                    type="button"
+                    className="ghost-button"
+                    onClick={() => {
+                      setCustomEdit(null);
+                      onDraftChange(null);
+                      if (!selectedVariant) onSelectVariant(null);
+                    }}
+                  >
+                    清除模拟
+                  </button>
+                )}
               </div>
               <p className="disclaimer">
                 <Info size={12} /> 教学演示：突变影响判断基于序列与理化性质启发式，不构成临床解释。

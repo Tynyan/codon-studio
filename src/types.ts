@@ -1,4 +1,9 @@
-export type ViewId = "workbench" | "frames" | "protein" | "variants" | "codons" | "methods";
+export type ViewId = "workbench" | "frames" | "protein" | "variants" | "codons" | "evolution" | "methods";
+
+export type SequenceEdit =
+  | { type: "substitution"; position: number; alt: string }
+  | { type: "deletion"; position: number; length: number; deleted?: string }
+  | { type: "insertion"; position: number; inserted: string };
 
 export interface SequenceRecord {
   accession: string;
@@ -18,6 +23,7 @@ export interface GeneVariant {
   note: string;
   source: string;
   rsid?: string;
+  edit?: SequenceEdit;
 }
 
 export interface DomainAnnotation {

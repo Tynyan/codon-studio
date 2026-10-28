@@ -1,0 +1,86 @@
+{
+  "source": "NCBI RefSeq / GenBank protein records via E-utilities",
+  "url": "https://www.ncbi.nlm.nih.gov/protein/",
+  "fetched": "2026-10-28",
+  "gene": "HBB",
+  "description": "Seven vertebrate beta-globin orthologs used for the evolution view.",
+  "species": [
+    {
+      "id": "human",
+      "commonName": "Human",
+      "commonNameZh": "人",
+      "latin": "Homo sapiens",
+      "accession": "NP_000509.1",
+      "group": "Mammal",
+      "color": "#c8ff5e",
+      "note": "Reference HBB sequence used throughout Codon Studio.",
+      "sequence": "MVHLTPEEKSAVTALWGKVNVDEVGGEALGRLLVVYPWTQRFFESFGDLSTPDAVMGNPKVKAHGKKVLGAFSDGLAHLDNLKGTFATLSELHCDKLHVDPENFRLLGNVLVCVLAHHFGKEFTPPVQAAYQKVVAGVANALAHKYH"
+    },
+    {
+      "id": "mouse",
+      "commonName": "Mouse",
+      "commonNameZh": "小鼠",
+      "latin": "Mus musculus",
+      "accession": "NP_001265090.1",
+      "group": "Mammal",
+      "color": "#ffd36e",
+      "note": "Hbb-b1, one of the adult beta-globin genes.",
+      "sequence": "MVHLTDAEKAAVSCLWGKVNSDEVGGEALGRLLVVYPWTQRYFDSFGDLSSASAIMGNAKVKAHGKKVITAFNDGLNHLDSLKGTFASLSELHCDKLHVDPENFRLLGNMIVIVLGHHLGKDFTPAAQAAFQKVVAGVATALAHKYH"
+    },
+    {
+      "id": "rat",
+      "commonName": "Rat",
+      "commonNameZh": "大鼠",
+      "latin": "Rattus norvegicus",
+      "accession": "NP_150237.1",
+      "group": "Mammal",
+      "color": "#ff8ba0",
+      "note": "Hbb-b1 beta-globin.",
+      "sequence": "MVHLTDAEKAAVNGLWGKVNPDDVGGEALGRLLVVYPWTQRYFDSFGDLSSASAIMGNPKVKAHGKKVINAFNDGLKHLDNLKGTFAHLSELHCDKLHVDPENFRLLGNMIVIVLGHHLGKEFTPCAQAAFQKVVAGVASALAHKYH"
+    },
+    {
+      "id": "cow",
+      "commonName": "Cow",
+      "commonNameZh": "牛",
+      "latin": "Bos taurus",
+      "accession": "NP_776342.1",
+      "group": "Mammal",
+      "color": "#b7a4ff",
+      "note": "Ruminant beta-globin; 145 aa in this RefSeq record.",
+      "sequence": "MLTAEEKAAVTAFWGKVKVDEVGGEALGRLLVVYPWTQRFFESFGDLSTADAVMNNPKVKAHGKKVLDSFSNGMKHLDDLKGTFAALSELHCDKLHVDPENFKLLGNVLVVVLARNFGKEFTPVLQADFQKVVAGVANALAHRYH"
+    },
+    {
+      "id": "chicken",
+      "commonName": "Chicken",
+      "commonNameZh": "鸡",
+      "latin": "Gallus gallus",
+      "accession": "NP_990820.1",
+      "group": "Bird",
+      "color": "#6ad7ff",
+      "note": "Avian beta-globin, a more distant vertebrate ortholog.",
+      "sequence": "MVHWTAEEKQLITGLWGKVNVAECGAEALARLLIVYPWTQRFFASFGNLSSPTAILGNPMVRAHGKKVLTSFGDAVKNLDNIKNTFSQLSELHCDKLHVDPENFRLLGDILIIVLAAHFSKDFTPECQAAWQKLVRVVAHALARKYH"
+    },
+    {
+      "id": "frog",
+      "commonName": "Clawed frog",
+      "commonNameZh": "非洲爪蟾",
+      "latin": "Xenopus laevis",
+      "accession": "AAH53807.1",
+      "group": "Amphibian",
+      "color": "#77e6b2",
+      "note": "GenBank Hbb protein; amphibian outgroup.",
+      "sequence": "MVHLSADEKSAINAVWSKVNIENDGHDALTRLLVVFPWTQRYFSSFGNLSNVAAISGNAKVRAHGKKVLSAVDESIHHLDDIKNFLSVLSTKHAEELHVDPENFKRLADVLVIVLAGKLGAAFTPQVQAAWEKFSAGLVAALSHGYF"
+    },
+    {
+      "id": "zebrafish",
+      "commonName": "Zebrafish",
+      "commonNameZh": "斑马鱼",
+      "latin": "Danio rerio",
+      "accession": "NP_571095.1",
+      "group": "Fish",
+      "color": "#8fb8ff",
+      "note": "Teleost beta-globin; 148 aa in this RefSeq record.",
+      "sequence": "MVEWTDAERTAILGLWGKLNIDEIGPQALSRCLIVYPWTQRYFATFGNLSSPAAIMGNPKVAAHGRTVMGGLERAIKNMDNVKNTYAALSVMHSEKLHVDPDNFRLLADCITVCAAMKFGQAGFNADVQEAWQKFLAVVVSALCRQYH"
+    }
+  ]
+}

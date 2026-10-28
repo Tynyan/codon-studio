@@ -1,4 +1,5 @@
 import codonUsageData from "../data/codonUsage.json";
+import type { SequenceEdit } from "../types";
 
 export type Nucleotide = "A" | "T" | "G" | "C";
 export type AminoAcidCode =
@@ -494,11 +495,20 @@ export function codonUsageStats(sequence: string): CodonUsageStats {
   };
 }
 
-export type MutationKind = "synonymous" | "missense" | "nonsense" | "stop-loss" | "untranslated";
+export type MutationKind =
+  | "synonymous"
+  | "missense"
+  | "nonsense"
+  | "stop-loss"
+  | "untranslated"
+  | "in-frame-deletion"
+  | "in-frame-insertion"
+  | "frameshift";
 
 export interface MutationAnalysis {
   position: number;
   frame: number;
+  editType: "substitution" | "deletion" | "insertion";
   ref: string;
   alt: string;
   codonIndex: number;
@@ -510,6 +520,10 @@ export interface MutationAnalysis {
   kind: MutationKind;
   refProtein: string;
   altProtein: string;
+  refProteinLength: number;
+  altProteinLength: number;
+  deleted?: string;
+  inserted?: string;
   massDelta: number;
   hydropathyDelta: number;
   chargeDelta: number;
@@ -548,6 +562,7 @@ export function analyzeMutation(
   return {
     position,
     frame,
+    editType: "substitution",
     ref,
     alt,
     codonIndex,
@@ -559,6 +574,78 @@ export function analyzeMutation(
     kind,
     refProtein,
     altProtein,
+    refProteinLength: refProtein.replace(/\*/g, "").length,
+    altProteinLength: altProtein.replace(/\*/g, "").length,
+    massDelta: altStats.mass - refStats.mass,
+    hydropathyDelta: altStats.gravy - refStats.gravy,
+    chargeDelta: altStats.charge - refStats.charge,
+    pIDelta: altStats.pI - refStats.pI,
+  };
+}
+
+export function applyEdit(sequence: string, edit: SequenceEdit): string {
+  if (edit.type === "substitution") {
+    return mutateSequence(sequence, edit.position, edit.alt);
+  }
+  if (edit.type === "deletion") {
+    const start = Math.max(0, edit.position - 1);
+    return `${sequence.slice(0, start)}${sequence.slice(start + edit.length)}`;
+  }
+  const start = Math.max(0, edit.position);
+  return `${sequence.slice(0, start)}${edit.inserted}${sequence.slice(start)}`;
+}
+
+export function analyzeEdit(sequence: string, edit: SequenceEdit, frame = 0): MutationAnalysis {
+  if (edit.type === "substitution") {
+    return analyzeMutation(sequence, edit.position, edit.alt, frame);
+  }
+
+  const position = edit.position;
+  const delta = edit.type === "deletion" ? edit.length : edit.inserted.length;
+  const mutated = applyEdit(sequence, edit);
+  const relative = position - 1 - frame;
+  const codonIndex = Math.max(0, Math.floor(relative / 3));
+  const codonStart = frame + codonIndex * 3;
+  const refCodon = sequence.slice(codonStart, codonStart + 3);
+  const altCodon = mutated.slice(codonStart, codonStart + 3);
+  const refAa = translateCodon(refCodon);
+  const altAa = translateCodon(altCodon);
+  const refProtein = proteinFromCds(sequence.slice(frame));
+  const altProtein = proteinFromCds(mutated.slice(frame));
+  const deleted =
+    edit.type === "deletion"
+      ? edit.deleted ?? sequence.slice(position - 1, position - 1 + edit.length)
+      : undefined;
+  const inserted = edit.type === "insertion" ? edit.inserted : undefined;
+  const kind: MutationKind =
+    delta % 3 === 0
+      ? edit.type === "deletion"
+        ? "in-frame-deletion"
+        : "in-frame-insertion"
+      : "frameshift";
+
+  const refStats = proteinStats(refProtein);
+  const altStats = proteinStats(altProtein);
+
+  return {
+    position,
+    frame,
+    editType: edit.type,
+    ref: deleted ?? "",
+    alt: inserted ?? "",
+    codonIndex,
+    codonStart,
+    refCodon,
+    altCodon,
+    refAa,
+    altAa,
+    kind,
+    refProtein,
+    altProtein,
+    refProteinLength: refProtein.replace(/\*/g, "").length,
+    altProteinLength: altProtein.replace(/\*/g, "").length,
+    deleted,
+    inserted,
     massDelta: altStats.mass - refStats.mass,
     hydropathyDelta: altStats.gravy - refStats.gravy,
     chargeDelta: altStats.charge - refStats.charge,
@@ -576,6 +663,12 @@ export function classifyMutation(analysis: MutationAnalysis): string {
       return "无义突变";
     case "stop-loss":
       return "终止密码子丢失";
+    case "in-frame-deletion":
+      return "整码缺失";
+    case "in-frame-insertion":
+      return "整码插入";
+    case "frameshift":
+      return "移码突变";
     default:
       return "非编码区";
   }
@@ -583,8 +676,8 @@ export function classifyMutation(analysis: MutationAnalysis): string {
 
 export function mutationTone(kind: MutationKind): "good" | "warn" | "bad" | "neutral" {
   if (kind === "synonymous") return "good";
-  if (kind === "missense") return "warn";
-  if (kind === "nonsense" || kind === "stop-loss") return "bad";
+  if (kind === "missense" || kind === "in-frame-deletion" || kind === "in-frame-insertion") return "warn";
+  if (kind === "nonsense" || kind === "stop-loss" || kind === "frameshift") return "bad";
   return "neutral";
 }
 
